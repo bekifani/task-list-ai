@@ -6,22 +6,31 @@ export default function App() {
   const [tasks, setTasks] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
 
-  // Load tasks from localStorage on mount
+  // Load tasks and dark mode preference from localStorage on mount
   useEffect(() => {
     const savedTasks = localStorage.getItem('ai-tasks');
     if (savedTasks) {
-      try {
-        setTasks(JSON.parse(savedTasks));
-      } catch (e) {
-        console.error('Failed to parse saved tasks', e);
-        localStorage.removeItem('ai-tasks');
-      }
+      setTasks(JSON.parse(savedTasks));
     }
 
-    // Load dark mode preference
+    // Load dark mode preference - check localStorage first, then system preference
     const savedDarkMode = localStorage.getItem('dark-mode');
-    if (savedDarkMode) {
-      setDarkMode(JSON.parse(savedDarkMode));
+    if (savedDarkMode !== null) {
+      const isDark = JSON.parse(savedDarkMode);
+      setDarkMode(isDark);
+      // Apply immediately to prevent flash
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } else {
+      // Check system preference if no saved preference
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setDarkMode(systemPrefersDark);
+      if (systemPrefersDark) {
+        document.documentElement.classList.add('dark');
+      }
     }
   }, []);
 
