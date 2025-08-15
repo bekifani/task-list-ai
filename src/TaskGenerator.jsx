@@ -4,11 +4,23 @@ import "tailwindcss"
 
 export default function TaskGenerator({ onTasksGenerated, darkMode }) {
   const [context, setContext] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const generateTasks = async () => {
-    if (!context.trim()) return;
+    if (!context.trim()) {
+      setError('Please enter a context to generate tasks.');
+      return;
+    }
+    
+    // Check for API key from input field or environment variable
+    const openaiApiKey = apiKey.trim() || import.meta.env.VITE_OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      setError('Please enter your OpenAI API key or set it in environment variables.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -37,7 +49,7 @@ export default function TaskGenerator({ onTasksGenerated, darkMode }) {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${openaiApiKey}`,
           },
         }
       );
@@ -71,7 +83,13 @@ export default function TaskGenerator({ onTasksGenerated, darkMode }) {
       
     } catch (err) {
       console.error('Error generating tasks:', err);
-      setError('Failed to generate tasks. Please check your API key and try again.');
+      if (err.response?.status === 401) {
+        setError('Invalid API key. Please check your OpenAI API key and try again.');
+      } else if (err.response?.status === 429) {
+        setError('Rate limit exceeded. Please wait a moment and try again.');
+      } else {
+        setError('Failed to generate tasks. Please check your API key and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -94,6 +112,34 @@ export default function TaskGenerator({ onTasksGenerated, darkMode }) {
       <div className="px-6 py-5">
         <div className="space-y-4">
           <div>
+            <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              OpenAI API Key
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                (Optional - for testing purposes)
+              </span>
+            </label>
+            <input
+              id="apiKey"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-proj-... (Enter your OpenAI API key to test)"
+              className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Get your API key from{' '}
+              <a 
+                href="https://platform.openai.com/api-keys" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                OpenAI Platform
+              </a>
+            </p>
+          </div>
+
+          <div>
             <label htmlFor="context" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               What do you want to accomplish?
             </label>
@@ -104,7 +150,7 @@ export default function TaskGenerator({ onTasksGenerated, darkMode }) {
                 onChange={(e) => setContext(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Example: 'Prepare for my final exams', 'Plan a summer vacation', 'Organize my home office'"
-                className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-gray-400 dark:placeholder-gray-600 resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 resize-none"
                 rows={4}
               />
               <div className="absolute bottom-2 right-2 flex items-center">
